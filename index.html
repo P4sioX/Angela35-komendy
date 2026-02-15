@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Sound Binds</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #f8f9fc; color: #1e293b; font-family: 'Inter', sans-serif; }
+        
+        .command-badge {
+            background-color: #f3f4f6; color: #6b7280; font-family: monospace;
+            padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; display: inline-block; margin-top: 4px;
+        }
+        .btn-speaker {
+            width: 42px; height: 42px; border: 1px solid #e5e7eb; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; background: white;
+            color: #374151; transition: all 0.2s; cursor: pointer;
+        }
+        .btn-speaker:hover { background-color: #f9fafb; border-color: #d1d5db; color: #111827; }
+        .btn-speaker:active { transform: scale(0.95); }
+        
+        .btn-speaker:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+
+        #toast {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="p-8 min-h-screen relative">
+    <div class="max-w-7xl mx-auto">
+        
+        <div class="text-center mb-12 mt-4">
+            <div class="flex items-center justify-center gap-3 mb-2">
+                <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-500">Stream Sound Binds</h1>
+            </div>
+        </div>
+
+        <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Sound Effects</h2>
+                <p class="text-gray-500 text-sm">Kliknij w ikonkę głośnika, aby wypróbować dźwięk (blokada aktywna)</p>
+            </div>
+            
+            <div class="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex items-center gap-4">
+                <span class="text-lg">🔊</span>
+                <input type="range" id="volume-control" min="0" max="1" step="0.01" value="0.5" class="w-32 accent-purple-600 cursor-pointer">
+                <span id="volume-value" class="text-sm font-mono font-bold text-gray-600 w-10">50%</span>
+            </div>
+        </div>
+
+        <div id="sound-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"></div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 bg-white border border-gray-200 shadow-xl rounded-lg px-4 py-3 flex items-center gap-3 min-w-[200px] z-50">
+        <div class="bg-black rounded-full p-1">
+        </div>
+        <div class="flex flex-col">
+            <span class="text-sm font-bold text-gray-900" id="toast-text">Playing: Sound</span>
+        </div>
+    </div>
+
+    <script>
+        const sounds = [
+            { title: "Turbina", cmd: "!turbina", pts: 100, file: "turbina" },
+            { title: "Iphone", cmd: "!iphone", pts: 150, file: "iphone" },
+            { title: "Morda", cmd: "!morda", pts: 100, file: "morda" },
+            { title: "Cycuszki", cmd: "!cycuszki", pts: 100, file: "cycuszki" },
+            { title: "Bomba", cmd: "!bomba", pts: 100, file: "bomba" },
+            { title: "Sad", cmd: "!sad", pts: 200, file: "sad" },
+            { title: "Sad2", cmd: "!sad2", pts: 200, file: "sad2" },
+            { title: "Pierdolisz", cmd: "!pierdolisz", pts: 150, file: "pierdolisz" },
+            { title: "Gagri", cmd: "!gagri", pts: 100, file: "gagri" },
+            { title: "Defuse", cmd: "!defuse", pts: 150, file: "defuse" },
+            { title: "Śmiech", cmd: "!śmiech", pts: 250, file: "śmiech" },
+            { title: "Przekleństwa", cmd: "!przekleństwa", pts: 250, file: "przekleństwa" },
+            { title: "AWP", cmd: "!awp", pts: 250, file: "awp" },
+            { title: "Mięsko", cmd: "!mięsko", pts: 250, file: "mięsko" },
+            { title: "Ban", cmd: "!ban", pts: 250, file: "ban" },
+            { title: "Plant", cmd: "!plant", pts: 250, file: "plant" },
+            { title: "Iaia", cmd: "!iaia", pts: 250, file: "iaia" },
+            { title: "Miśka", cmd: "!miśka", pts: 250, file: "miśka" },
+            { title: "Polska", cmd: "!polska", pts: 250, file: "polska" },
+            { title: "Rozbieraj", cmd: "!rozbieraj", pts: 250, file: "rozbieraj" },
+            { title: "Enderman", cmd: "!enderman", pts: 250, file: "enderman" },
+            { title: "Syrena", cmd: "!syrena", pts: 250, file: "syrena" },
+            { title: "Bydle", cmd: "!bydle", pts: 250, file: "bydle" },
+            { title: "Ryszard", cmd: "!ryszard", pts: 250, file: "ryszard" },
+            { title: "Dowidzenia", cmd: "!dowidzenia", pts: 250, file: "dowidzenia" }
+        ];
+
+        const grid = document.getElementById('sound-grid');
+        const volControl = document.getElementById('volume-control');
+        const volValue = document.getElementById('volume-value');
+        const iconSvg = `🔊`;
+        
+        let isPlaying = false; 
+        let currentAudio = null; 
+
+        volControl.addEventListener('input', () => {
+            const val = Math.round(volControl.value * 100);
+            volValue.innerText = val + "%";
+            if (currentAudio) {
+                currentAudio.volume = volControl.value;
+            }
+        });
+
+        grid.innerHTML = sounds.map(sound => `
+            <div class="bg-white rounded-xl p-5 border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-shadow flex justify-between items-start">
+                <div>
+                    <h3 class="font-bold text-gray-900 text-lg">${sound.title}</h3>
+                    <div class="mb-3">${sound.cmd}</span></div>
+                    <div class="text-xs text-gray-400 font-medium">${sound.pts} channel points</div>
+                </div>
+                <button class="btn-speaker" onclick="playSound('sounds/${sound.file}.mp3', '${sound.title}')">${iconSvg}</button>
+            </div>
+        `).join('');
+
+        function playSound(path, title) {
+            if (isPlaying) return; 
+
+            currentAudio = new Audio(path); 
+            currentAudio.volume = volControl.value; 
+            
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toast-text');
+            
+            isPlaying = true;
+            
+            currentAudio.play().then(() => {
+                toastText.innerText = `Playing: ${title}`;
+                toast.classList.add('show');
+
+                currentAudio.onended = () => {
+                    isPlaying = false;
+                    currentAudio = null; 
+                    toast.classList.remove('show');
+                };
+            }).catch(e => {
+                console.warn('Błąd odtwarzania:', path);
+                isPlaying = false;
+                currentAudio = null;
+            });
+        }
+    </script>
+</body>
+</html>
