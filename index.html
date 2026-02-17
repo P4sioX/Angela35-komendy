@@ -275,6 +275,23 @@
                 currentAudio = null;
             });
         }
+		
+			const secretSequence = [
+					'ArrowUp', 'ArrowUp', 'ArrowUp', 
+					'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight'
+				];
+				
+			let inputSequence = [];
+
+				document.addEventListener('keydown', (e) => {
+				inputSequence.push(e.key);
+				inputSequence = inputSequence.slice(-secretSequence.length);
+
+			if (JSON.stringify(inputSequence) === JSON.stringify(secretSequence)) {
+				window.open('https://youtu.be/KSPxHniCtmw?si=XKf10WyVoIPUAClk&t=1', target="_self");
+				inputSequence = [];
+    }
+});
     </script>
 </body>
 </html>
